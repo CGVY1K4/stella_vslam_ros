@@ -47,21 +47,24 @@ system::system(const std::shared_ptr<stella_vslam::system>& slam,
                                    .finished();
 }
 
-void system::publish_pose(const Eigen::Matrix4d& cam_pose_wc, const rclcpp::Time& stamp) {
+void system::publish_pose(const Eigen::Matrix4d& cam_pose_wc, const ros::Time& stamp) {
     // Extract rotation matrix and translation vector from
     Eigen::Matrix3d rot(cam_pose_wc.block<3, 3>(0, 0));
     Eigen::Translation3d trans(cam_pose_wc.block<3, 1>(0, 3));
-    Eigen::Affine3d map_to_camera_affine(trans * rot);
+    // Eigen::Affine3d map_to_camera_affine(trans * rot); 주석처리
+    Eigen::Affine3d map_to_camera_affine(trans);
+
 
     // Transform map frame from CV coordinate system to ROS coordinate system
     map_to_camera_affine.prerotate(rot_ros_to_cv_map_frame_);
 
     // Create odometry message and update it with current camera pose
-    nav_msgs::msg::Odometry pose_msg;
+    nav_msgs::Odometry pose_msg;
     pose_msg.header.stamp = stamp;
     pose_msg.header.frame_id = map_frame_;
     pose_msg.child_frame_id = camera_frame_;
-    pose_msg.pose.pose = tf2::toMsg(map_to_camera_affine * rot_ros_to_cv_map_frame_.inverse());
+    // pose_msg.pose.pose = tf2::toMsg(map_to_camera_affine * rot_ros_to_cv_map_frame_.inverse()); 주석
+    pose_msg.pose.pose = tf2::toMsg(map_to_camera_affine);
     pose_pub_->publish(pose_msg);
 
     // Send map->odom transform. Set publish_tf to false if not using TF
